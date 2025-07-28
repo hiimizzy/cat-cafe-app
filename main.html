@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat Café</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐱 Bem vindo ao Cat Café</h1>
+            <p>Delícias felinas para todos os gostos!</p>
+            <div class="pixel-cat">🐾</div>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn active" onclick="showScreen('customer')">Cliente</button>
+            <!-- <button class="nav-btn" onclick="showScreen('admin')">Admin</button> -->
+        </div>
+
+        <!-- Tela do Cliente -->
+        <div id="customer" class="screen active">
+            <div class="form-group">
+                <label for="customerName">👤 Seu Nome:</label>
+                <input type="text" id="customerName" placeholder="Digite seu nome aqui...">
+            </div>
+
+            <h3 style="margin-bottom: 15px; color: #ff6b6b;">☕ Cardápio:</h3>
+            <div class="menu-grid" id="menuGrid">
+                <!-- Items serão gerados via JavaScript -->
+            </div>
+
+            <div id="cartSummary" class="cart-summary" style="display: none;">
+                <h4 style="margin-bottom: 10px; color: #333;">🛒 Seu Pedido:</h4>
+                <div id="cartItems"></div>
+            </div>
+
+            <button class="order-btn" id="orderBtn" onclick="submitOrder()" disabled>
+                🎯 Fazer Pedido
+            </button>
+
+            <div id="successMessage" style="display: none;"></div>
+        </div>
+
+        
+
+    <script>
+        // Dados do cardápio
+        const menuItems = [
+            {
+                id: 1,
+                name: "☕ Café Miau",
+                price: 8.50,
+                description: "Espresso cremoso com arte de gatinho na espuma"
+            },
+            {
+                id: 2,
+                name: "🥐 Croissant Felino",
+                price: 12.00,
+                description: "Croissant fresquinho em formato de orelha de gato"
+            },
+            {
+                id: 3,
+                name: "🧁 Cupcake Pata",
+                price: 9.50,
+                description: "Cupcake de baunilha com pegadas de chocolate"
+            },
+            {
+                id: 4,
+                name: "🥛 Leite Gatinho",
+                price: 7.00,
+                description: "Leite especial com canela e mel"
+            },
+            {
+                id: 5,
+                name: "🍰 Bolo de Peixe Doce",
+                price: 15.00,
+                description: "Fatia de bolo de cenoura em formato de peixinho"
+            },
+            {
+                id: 6,
+                name: "🍪 Biscoitos da Vovó Gata",
+                price: 6.50,
+                description: "Kit com 6 biscoitos caseiros em formato de gato"
+            }
+        ];
+
+        // Estado da aplicação
+        let cart = {};
+        let orders = JSON.parse(localStorage.getItem('cafeOrders') || '[]');
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            renderMenu();
+            refreshOrders();
+        });
+
+        // Navegação entre telas
+        function showScreen(screenName) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            document.getElementById(screenName).classList.add('active');
+            event.target.classList.add('active');
+
+            if (screenName === 'admin') {
+                refreshOrders();
+            }
+        }
+
+        // Renderizar cardápio
+        function renderMenu() {
+            const menuGrid = document.getElementById('menuGrid');
+            menuGrid.innerHTML = '';
+
+            menuItems.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'menu-item';
+                itemElement.id = `item-${item.id}`;
+                
+                itemElement.innerHTML = `
+                    <div class="item-header">
+                        <span class="item-name">${item.name}</span>
+                        <span class="item-price">R$ ${item.price.toFixed(2)}</span>
+                    </div>
+                    <div class="item-description">${item.description}</div>
+                    <div class="quantity-controls">
+                        <button class="qty-btn" onclick="changeQuantity(${item.id}, -1)">-</button>
+                        <span class="qty-display" id="qty-${item.id}">1</span>
+                        <button class="qty-btn" onclick="changeQuantity(${item.id}, 1)">+</button>
+                    </div>
+                `;
+
+                itemElement.addEventListener('click', () => toggleItem(item.id));
+                menuGrid.appendChild(itemElement);
+            });
+        }
+
+        // Alternar seleção de item
+        function toggleItem(itemId) {
+            const itemElement = document.getElementById(`item-${itemId}`);
+            
+            if (cart[itemId]) {
+                // Remove do carrinho
+                delete cart[itemId];
+                itemElement.classList.remove('selected');
+            } else {
+                // Adiciona ao carrinho
+                cart[itemId] = 1;
+                itemElement.classList.add('selected');
+                document.getElementById(`qty-${itemId}`).textContent = '1';
+            }
+            
+            updateCartDisplay();
+        }
+
+        // Alterar quantidade
+        function changeQuantity(itemId, change) {
+            if (!cart[itemId]) return;
+            
+            cart[itemId] = Math.max(1, cart[itemId] + change);
+            document.getElementById(`qty-${itemId}`).textContent = cart[itemId];
+            updateCartDisplay();
+        }
+
+        // Atualizar exibição do carrinho
+        function updateCartDisplay() {
+            const cartSummary = document.getElementById('cartSummary');
+            const cartItems = document.getElementById('cartItems');
+            const orderBtn = document.getElementById('orderBtn');
+            
+            if (Object.keys(cart).length === 0) {
+                cartSummary.style.display = 'none';
+                orderBtn.disabled = true;
+                return;
+            }
+
+            cartSummary.style.display = 'block';
+            orderBtn.disabled = false;
+
+            let cartHTML = '';
+            let total = 0;
+
+            Object.keys(cart).forEach(itemId => {
+                const item = menuItems.find(m => m.id == itemId);
+                const quantity = cart[itemId];
+                const subtotal = item.price * quantity;
+                total += subtotal;
+
+                cartHTML += `
+                    <div class="cart-item">
+                        <span>${item.name} x${quantity}</span>
+                        <span>R$ ${subtotal.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+
+            cartHTML += `
+                <div class="cart-item">
+                    <span>Total:</span>
+                    <span>R$ ${total.toFixed(2)}</span>
+                </div>
+            `;
+
+            cartItems.innerHTML = cartHTML;
+        }
+
+        // Submeter pedido
+        function submitOrder() {
+            const customerName = document.getElementById('customerName').value.trim();
+            
+            if (!customerName) {
+                alert('Por favor, digite seu nome!');
+                return;
+            }
+
+            if (Object.keys(cart).length === 0) {
+                alert('Adicione itens ao seu pedido!');
+                return;
+            }
+
+            // Criar objeto do pedido
+            const order = {
+                id: Date.now(),
+                customer: customerName,
+                items: {},
+                total: 0,
+                timestamp: new Date().toLocaleString('pt-BR')
+            };
+
+            // Calcular total e preparar itens
+            Object.keys(cart).forEach(itemId => {
+                const item = menuItems.find(m => m.id == itemId);
+                const quantity = cart[itemId];
+                order.items[itemId] = {
+                    name: item.name,
+                    price: item.price,
+                    quantity: quantity,
+                    subtotal: item.price * quantity
+                };
+                order.total += order.items[itemId].subtotal;
+            });
+
+            // Salvar pedido
+            orders.unshift(order);
+            localStorage.setItem('cafeOrders', JSON.stringify(orders));
+
+            // Mostrar mensagem de sucesso
+            showSuccessMessage(order);
+
+            // Limpar formulário
+            document.getElementById('customerName').value = '';
+            cart = {};
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            updateCartDisplay();
+        }
+
+        // Mostrar mensagem de sucesso
+        function showSuccessMessage(order) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.innerHTML = `
+                <div class="success-message">
+                    <strong>🎉 Pedido realizado com sucesso!</strong><br>
+                    <small>Pedido #${order.id} - Total: R$ ${order.total.toFixed(2)}</small><br>
+                    <small>Obrigado, ${order.customer}! Seu pedido está sendo preparado com carinho 🐱</small>
+                </div>
+            `;
+            successDiv.style.display = 'block';
+
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Atualizar lista de pedidos (admin)
+        function refreshOrders() {
+            const ordersList = document.getElementById('ordersList');
+            orders = JSON.parse(localStorage.getItem('cafeOrders') || '[]');
+
+            if (orders.length === 0) {
+                ordersList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="pixel-cat">😿</div>
+                        <p>Nenhum pedido ainda...</p>
+                        <small>Os pedidos aparecerão aqui quando forem realizados</small>
+                    </div>
+                `;
+                return;
+            }
+
+            let ordersHTML = '';
+            orders.forEach(order => {
+                let itemsHTML = '';
+                Object.values(order.items).forEach(item => {
+                    itemsHTML += `
+                        <div class="order-item">
+                            <span>${item.name} x${item.quantity}</span>
+                            <span>R$ ${item.subtotal.toFixed(2)}</span>
+                        </div>
+                    `;
+                });
+
+                ordersHTML += `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <span class="order-customer">👤 ${order.customer}</span>
+                            <span class="order-time">🕐 ${order.timestamp}</span>
+                        </div>
+                        <div class="order-items">
+                            ${itemsHTML}
+                        </div>
+                        <div class="order-total">
+                            Total: R$ ${order.total.toFixed(2)}
+                        </div>
+                    </div>
+                `;
+            });
+
+            ordersList.innerHTML = ordersHTML;
+        }
+    </script>
+</body>
+</html>
