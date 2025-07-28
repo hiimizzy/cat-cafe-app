@@ -9,14 +9,14 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🐱 Bem vindo ao Cat Café</h1>
+            <h1>Bem vindo ao Cat Café</h1>
             <p>Delícias felinas para todos os gostos!</p>
             <div class="pixel-cat">🐾</div>
         </div>
 
         <div class="nav-buttons">
             <button class="nav-btn active" onclick="showScreen('customer')">Cliente</button>
-            <!-- <button class="nav-btn" onclick="showScreen('admin')">Admin</button> -->
+            <button class="nav-btn" onclick="showScreen('admin')">Admin</button>
         </div>
 
         <!-- Tela do Cliente -->
@@ -43,7 +43,25 @@
             <div id="successMessage" style="display: none;"></div>
         </div>
 
-        
+        <!-- Tela do Admin -->
+        <div id="admin" class="screen">
+            <div class="admin-header">
+                <h3>👨‍💼 Painel Administrativo</h3>
+                <p>Gerencie os pedidos da cafeteria</p>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h4 style="color: #333;">📋 Pedidos Recebidos:</h4>
+                <button onclick="refreshOrders()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 12px;">
+                    🔄 Atualizar
+                </button>
+            </div>
+
+            <div id="ordersList" class="orders-list">
+                <!-- Pedidos serão listados aqui -->
+            </div>
+        </div>
+    </div>
 
     <script>
         // Dados do cardápio
